@@ -1,22 +1,59 @@
 from flask import Flask, Response
 import cv2
+from threading import Thread
+import time
+
+class ThreadedCamera:
+    def __init__(self, src=0):
+        self.capture = cv2.VideoCapture(src, cv2.CAP_V4L2)
+    
+        self.capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        
+        self.capture.set(cv2.CAP_PROP_FPS, 30)
+
+        self.status, self.frame = self.capture.read()
+        self.thread = Thread(target=self.update, args=())
+        self.thread.daemon = True
+        self.stopped = False
+
+    def start(self):
+        self.thread.start()
+        return self
+
+    def update(self):
+        while not self.stopped:
+            if self.capture.isOpened():
+                (self.status, self.frame) = self.capture.read()
+            else:
+                time.sleep(0.1)
+
+    def read(self):
+        return self.frame
+
+    def stop(self):
+        self.stopped = True
+        self.capture.release()
+
+stream = ThreadedCamera(0).start()
 
 app = Flask(__name__)
-cap = cv2.VideoCapture(0) # Camera ta
-cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 def generate_frames():
     while True:
-        success, frame = cap.read()
-        if not success: break
+        frame = stream.read()
         
-      
-        
+        if frame is None:
+            continue
+
+
         ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        
+        frame_bytes = buffer.tobytes()
+
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
 @app.route('/video')
 def video_feed():
@@ -24,7 +61,10 @@ def video_feed():
 
 @app.route('/')
 def index():
-    return "<h1>Camera Masinii</h1><img src='/video' width='640'>"
+    return "<h1>Camera Masina Autonoma</h1><img src='/video' width='640'>"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    except KeyboardInterrupt:
+        stream.stop()
