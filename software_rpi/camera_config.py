@@ -2,6 +2,7 @@ from flask import Flask, Response
 import cv2
 from threading import Thread
 import time
+import numpy as np
 
 class ThreadedCamera:
     def __init__(self, src=0):
@@ -18,6 +19,7 @@ class ThreadedCamera:
         self.thread = Thread(target=self.update, args=())
         self.thread.daemon = True
         self.stopped = False
+
 
     def start(self):
         self.thread.start()
@@ -47,8 +49,8 @@ def generate_frames():
         
         if frame is None:
             continue
-
-
+        
+        cv2.line(frame, (0,0), (frame.shape[1]//2, frame.shape[0]//2),(255,255,255))
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
         ret, buffer = cv2.imencode('.jpg', frame, encode_param)
         frame_bytes = buffer.tobytes()
