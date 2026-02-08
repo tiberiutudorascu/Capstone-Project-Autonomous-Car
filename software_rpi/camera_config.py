@@ -49,7 +49,8 @@ def generate_frames():
             continue
 
 
-        ret, buffer = cv2.imencode('.jpg', frame)
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
+        ret, buffer = cv2.imencode('.jpg', frame, encode_param)
         frame_bytes = buffer.tobytes()
 
         yield (b'--frame\r\n'
