@@ -4,6 +4,11 @@ from threading import Thread # Importa Threading pentru a rula camera in paralel
 import time # Importa modulul de timp pentru pauze si masuratori
 import numpy as np # Importa Numpy pentru calcule matematice pe matrici (imagini)
 
+focal_length = 544 # px
+stop_sign_height = 7.5 # cm
+stop_sign_width = 7.5 # cm
+distance_list = ["Departe","Aproape","Foarte Aproape"]
+
 class ThreadedCamera: # Defineste o clasa noua pentru a gestiona camera separat
     def __init__(self, src=0): # Functia de initializare care porneste cand cream obiectul
         self.capture = cv2.VideoCapture(src, cv2.CAP_V4L2) # Deschide camera folosind driverul V4L2 (specific Linux/Raspberry Pi)
@@ -19,7 +24,6 @@ class ThreadedCamera: # Defineste o clasa noua pentru a gestiona camera separat
         self.thread = Thread(target=self.update, args=()) # Pregateste un fir de executie separat care va rula functia 'update'
         self.thread.daemon = True # Seteaza firul ca 'daemon' (se inchide automat cand programul principal se inchide)
         self.stopped = False # Variabila de control pentru a sti cand sa oprim camera
-
 
     def start(self): # Functie care porneste efectiv citirea paralela
         self.thread.start() # Da startul firului de executie creat mai sus
@@ -44,6 +48,9 @@ stream = ThreadedCamera(0).start() # Initializam camera si pornim citirea in fun
 app = Flask(__name__) # Cream aplicatia serverului web Flask
 stop_cascade = cv2.CascadeClassifier('classifiers/stop_sign_classifier_2.xml')
 
+def calculate_distance(focal_length,real_height,image_height):
+    return (real_height * focal_length) // image_height
+
 
 def generate_frames(): # Functia care genereaza fluxul video pentru browser
     while True: # Bucla infinita care trimite poze catre browser
@@ -53,10 +60,20 @@ def generate_frames(): # Functia care genereaza fluxul video pentru browser
             continue # Sarim peste acest pas si incercam din nou
             
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # Adaugam Grayscale camerei video
-        found = stop_cascade.detectMultiScale(frame_gray, minSize=(20, 20))
+        found_stop_sign = stop_cascade.detectMultiScale(frame_gray, minSize=(20, 20))
 
-        for (x, y, w, h) in found:
+        for (x, y, w, h) in found_stop_sign:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 5)
+            distance = calculate_distance(focal_length,7.5,h)
+            if distance > 50:
+                cv2.putText(frame, f"S: {distance_list[0]}", (x, y - 10), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            elif 20 < distance <= 50::
+                cv2.putText(frame, f"S: {distance_list[1]}", (x, y - 10), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            elif distance <= 20:
+                cv2.putText(frame, f"S: {distance_list[2]}", (x, y - 10), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50] # Setam calitatea compresiei JPEG la 50% pentru viteza pe WiFi
         ret, buffer = cv2.imencode('.jpg', frame, encode_param) # Comprimam imaginea bruta in format JPG
