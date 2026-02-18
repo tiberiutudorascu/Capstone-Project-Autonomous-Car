@@ -18,8 +18,8 @@ opencv_traincascade.exe ^
 -data data ^
 -vec final_positives.vec ^
 -bg neg.txt ^
--numPos 5000 ^  ::La fel in functie de cate date sunt scoase din fisierul vec final se poate modifica aici cu -1000 fata de cate mostre au iesit
--numNeg 2000 ^  ::Analog aici
+-numPos 5000 ^  REM La fel in functie de cate date sunt scoase din fisierul vec final se poate modifica aici cu -1000 fata de cate mostre au iesit
+-numNeg 2000 ^  REM Analog aici
 -numStages 20 ^
 -w 32 -h 32 ^
 -featureType LBP ^
@@ -28,3 +28,4 @@ opencv_traincascade.exe ^
 -precalcValBufSize 4096 ^
 
 -precalcIdxBufSize 4096
+
