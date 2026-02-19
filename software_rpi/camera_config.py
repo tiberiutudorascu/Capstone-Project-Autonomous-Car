@@ -54,9 +54,22 @@ def generate_frames(): # Functia care genereaza fluxul video pentru browser
             continue # Sarim peste acest pas si incercam din nou
             
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # Adaugam Grayscale camerei video
-        found_stop_sign = camera.stop_cascade.detectMultiScale(frame_gray, minSize=(20, 20))
 
+        found_stop_sign = camera.stop_cascade.detectMultiScale(frame_gray, minSize=(20, 20))
+        found_way_sign = camera.one_way_cascade.detectMultiScale(frame_gray,scaleFactor=1.05,minNeighbors=3,minSize=(32, 32))        
         for (x, y, w, h) in found_stop_sign:
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 5)
+            distance = camera.calculate_distance(camera.focal_length,7.5,h)
+            if distance > 50:
+                cv2.putText(frame, f"S: {camera.distance_list[0]}", (x, y - 10), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            elif 20 < distance <= 50:
+                cv2.putText(frame, f"S: {camera.distance_list[1]}", (x, y - 10), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            elif distance <= 20:
+                cv2.putText(frame, f"S: {camera.distance_list[2]}", (x, y - 10), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        for (x, y, w, h) in found_way_sign:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 5)
             distance = camera.calculate_distance(camera.focal_length,7.5,h)
             if distance > 50:
