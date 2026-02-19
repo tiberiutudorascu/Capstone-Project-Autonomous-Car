@@ -2,7 +2,7 @@ mkdir n ::Aici se adauga poze,frameuri care NU contin deloc semnul!
 
 dir /b /s n\*.jpg > neg.txt
 
-mkdir data ::Aici se adauga datele finale
+mkdir data REM Aici se adauga datele finale
 
 opencv_createsamples.exe -img semn.png -bg neg.txt -info info.txt -num 2500 -maxxangle 0.5 -maxyangle 0.5 -maxzangle 0.5 -w 32 -h 32 -vec pos1.vec
 
@@ -28,4 +28,5 @@ opencv_traincascade.exe ^
 -precalcValBufSize 4096 ^
 
 -precalcIdxBufSize 4096
+
 
