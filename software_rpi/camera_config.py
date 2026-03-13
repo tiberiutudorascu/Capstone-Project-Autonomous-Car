@@ -46,50 +46,36 @@ stream = ThreadedCamera(0).start() # Initializam camera si pornim citirea in fun
 app = Flask(__name__) # Cream aplicatia serverului web Flask
 
 
-def generate_frames(): # Functia care genereaza fluxul video pentru browser
-    while True: # Bucla infinita care trimite poze catre browser
-        frame = stream.read() # Cere ultima imagine de la clasa ThreadedCamera
+def generate_frames():
+    while True:
+        frame = stream.read()
         
-        if frame is None: # Daca din vreun motiv nu avem imagine
-            continue # Sarim peste acest pas si incercam din nou
+        if frame is None:
+            continue
             
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # Adaugam Grayscale camerei video
+        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+        # Sign detection
         found_stop_sign = camera.stop_cascade.detectMultiScale(frame_gray, minSize=(20, 20))
-        found_way_sign = camera.one_way_cascade.detectMultiScale(frame_gray,scaleFactor=1.05,minNeighbors=3,minSize=(32, 32))        
+        found_way_sign = camera.one_way_cascade.detectMultiScale(frame_gray, scaleFactor=1.05, minNeighbors=3, minSize=(32, 32))
+        
         for (x, y, w, h) in found_stop_sign:
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 5)
-            distance = camera.calculate_distance(camera.focal_length,7.5,h)
-            if distance > 50:
-                cv2.putText(frame, f"S: {camera.distance_list[0]}", (x, y - 10), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            elif 20 < distance <= 50:
-                cv2.putText(frame, f"S: {camera.distance_list[1]}", (x, y - 10), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            elif distance <= 20:
-                cv2.putText(frame, f"S: {camera.distance_list[2]}", (x, y - 10), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            camera.draw_detection(frame, x, y, w, h, "STOP")
+        
         for (x, y, w, h) in found_way_sign:
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 5)
-            distance = camera.calculate_distance(camera.focal_length,7.5,h)
-            if distance > 50:
-                cv2.putText(frame, f"S: {camera.distance_list[0]}", (x, y - 10), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            elif 20 < distance <= 50:
-                cv2.putText(frame, f"S: {camera.distance_list[1]}", (x, y - 10), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            elif distance <= 20:
-                cv2.putText(frame, f"S: {camera.distance_list[2]}", (x, y - 10), 
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            camera.draw_detection(frame, x, y, w, h, "SENS UNIC")
 
-        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50] # Setam calitatea compresiei JPEG la 50% pentru viteza pe WiFi
-        ret, buffer = cv2.imencode('.jpg', frame, encode_param) # Comprimam imaginea bruta in format JPG
-        frame_bytes = buffer.tobytes() # Convertim imaginea JPG in biti simpli pentru a fi trimisi pe net
+        # Lane detection
+        frame, error = camera.detect_lanes(frame, frame_gray)
 
-        # Trimitem bucata curenta (imaginea) catre browser intr-un format special (multipart)
+        # Encodezi DUPA ce ai desenat totul
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
+        ret, buffer = cv2.imencode('.jpg', frame, encode_param)
+        frame_bytes = buffer.tobytes()
+
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
+               
 @app.route('/video') # Definim adresa web /video
 def video_feed(): # Functia care raspunde cand cineva acceseaza /video
     # Returneaza fluxul continuu de imagini generate mai sus
